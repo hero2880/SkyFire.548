@@ -136,107 +136,110 @@ class DBCStorage
             stringPoolList.push_back(dbc.AutoProduceStrings(fmt, reinterpret_cast<char*>(dataTable)));
 
             // Insert sql data into arrays
-            if (result)
+            if (sql)
             {
-                if (indexTable.asT)
+                if (result)
                 {
-                    uint32 offset = 0;
-                    uint32 rowIndex = dbc.GetNumRows();
-                    do
+                    if (indexTable.asT)
                     {
-                        if (!fields)
-                            fields = result->Fetch();
-
-                        if (sql->indexPos >= 0)
+                        uint32 offset = 0;
+                        uint32 rowIndex = dbc.GetNumRows();
+                        do
                         {
-                            uint32 id = fields[sql->sqlIndexPos].GetUInt32();
-                            if (indexTable.asT[id])
+                            if (!fields)
+                                fields = result->Fetch();
+
+                            if (sql->indexPos >= 0)
                             {
-                                TC_LOG_ERROR("server.loading", "Index %d already exists in dbc:'%s'", id, sql->sqlTableName.c_str());
-                                return false;
-                            }
-
-                            indexTable.asT[id] = reinterpret_cast<T*>(&sqlDataTable[offset]);
-                        }
-                        else
-                            indexTable.asT[rowIndex]= reinterpret_cast<T*>(&sqlDataTable[offset]);
-
-                        uint32 columnNumber = 0;
-                        uint32 sqlColumnNumber = 0;
-
-                        for (; columnNumber < sql->formatString->size(); ++columnNumber)
-                        {
-                            if ((*sql->formatString)[columnNumber] == FT_SQL_ABSENT)
-                            {
-                                switch (fmt[columnNumber])
+                                uint32 id = fields[sql->sqlIndexPos].GetUInt32();
+                                if (indexTable.asT[id])
                                 {
-                                    case FT_FLOAT:
-                                        *reinterpret_cast<float*>(&sqlDataTable[offset]) = 0.0f;
-                                        offset += 4;
-                                        break;
-                                    case FT_IND:
-                                    case FT_INT:
-                                        *reinterpret_cast<uint32*>(&sqlDataTable[offset]) = uint32(0);
-                                        offset += 4;
-                                        break;
-                                    case FT_BYTE:
-                                        *reinterpret_cast<uint8*>(&sqlDataTable[offset]) = uint8(0);
-                                        offset += 1;
-                                        break;
-                                    case FT_STRING:
-                                        // Beginning of the pool - empty string
-                                        *reinterpret_cast<char**>(&sqlDataTable[offset]) = stringPoolList.back();
-                                        offset += sizeof(char*);
-                                        break;
+                                    TC_LOG_ERROR("server.loading", "Index %d already exists in dbc:'%s'", id, sql->sqlTableName.c_str());
+                                    return false;
                                 }
-                            }
-                            else if ((*sql->formatString)[columnNumber] == FT_SQL_PRESENT)
-                            {
-                                bool validSqlColumn = true;
-                                switch (fmt[columnNumber])
-                                {
-                                    case FT_FLOAT:
-                                        *reinterpret_cast<float*>(&sqlDataTable[offset]) = fields[sqlColumnNumber].GetFloat();
-                                        offset += 4;
-                                        break;
-                                    case FT_IND:
-                                    case FT_INT:
-                                        *reinterpret_cast<uint32*>(&sqlDataTable[offset]) = fields[sqlColumnNumber].GetUInt32();
-                                        offset += 4;
-                                        break;
-                                    case FT_BYTE:
-                                        *reinterpret_cast<uint8*>(&sqlDataTable[offset]) = fields[sqlColumnNumber].GetUInt8();
-                                        offset += 1;
-                                        break;
-                                    case FT_STRING:
-                                        TC_LOG_ERROR("server.loading", "Unsupported data type in table '%s' at char %d", sql->sqlTableName.c_str(), columnNumber);
-                                        return false;
-                                    case FT_SORT:
-                                        break;
-                                    default:
-                                        validSqlColumn = false;
-                                        break;
-                                }
-                                if (validSqlColumn && (columnNumber != (sql->formatString->size()-1)))
-                                    sqlColumnNumber++;
+
+                                indexTable.asT[id] = reinterpret_cast<T*>(&sqlDataTable[offset]);
                             }
                             else
+                                indexTable.asT[rowIndex]= reinterpret_cast<T*>(&sqlDataTable[offset]);
+
+                            uint32 columnNumber = 0;
+                            uint32 sqlColumnNumber = 0;
+
+                            for (; columnNumber < sql->formatString->size(); ++columnNumber)
                             {
-                                TC_LOG_ERROR("server.loading", "Incorrect sql format string '%s' at char %d", sql->sqlTableName.c_str(), columnNumber);
+                                if ((*sql->formatString)[columnNumber] == FT_SQL_ABSENT)
+                                {
+                                    switch (fmt[columnNumber])
+                                    {
+                                        case FT_FLOAT:
+                                            *reinterpret_cast<float*>(&sqlDataTable[offset]) = 0.0f;
+                                            offset += 4;
+                                            break;
+                                        case FT_IND:
+                                        case FT_INT:
+                                            *reinterpret_cast<uint32*>(&sqlDataTable[offset]) = uint32(0);
+                                            offset += 4;
+                                            break;
+                                        case FT_BYTE:
+                                            *reinterpret_cast<uint8*>(&sqlDataTable[offset]) = uint8(0);
+                                            offset += 1;
+                                            break;
+                                        case FT_STRING:
+                                            // Beginning of the pool - empty string
+                                            *reinterpret_cast<char**>(&sqlDataTable[offset]) = stringPoolList.back();
+                                            offset += sizeof(char*);
+                                            break;
+                                    }
+                                }
+                                else if ((*sql->formatString)[columnNumber] == FT_SQL_PRESENT)
+                                {
+                                    bool validSqlColumn = true;
+                                    switch (fmt[columnNumber])
+                                    {
+                                        case FT_FLOAT:
+                                            *reinterpret_cast<float*>(&sqlDataTable[offset]) = fields[sqlColumnNumber].GetFloat();
+                                            offset += 4;
+                                            break;
+                                        case FT_IND:
+                                        case FT_INT:
+                                            *reinterpret_cast<uint32*>(&sqlDataTable[offset]) = fields[sqlColumnNumber].GetUInt32();
+                                            offset += 4;
+                                            break;
+                                        case FT_BYTE:
+                                            *reinterpret_cast<uint8*>(&sqlDataTable[offset]) = fields[sqlColumnNumber].GetUInt8();
+                                            offset += 1;
+                                            break;
+                                        case FT_STRING:
+                                            TC_LOG_ERROR("server.loading", "Unsupported data type in table '%s' at char %d", sql->sqlTableName.c_str(), columnNumber);
+                                            return false;
+                                        case FT_SORT:
+                                            break;
+                                        default:
+                                            validSqlColumn = false;
+                                            break;
+                                    }
+                                    if (validSqlColumn && (columnNumber != (sql->formatString->size()-1)))
+                                        sqlColumnNumber++;
+                                }
+                                else
+                                {
+                                    TC_LOG_ERROR("server.loading", "Incorrect sql format string '%s' at char %d", sql->sqlTableName.c_str(), columnNumber);
+                                    return false;
+                                }
+                            }
+
+                            if (sqlColumnNumber != (result->GetFieldCount() - 1))
+                            {
+                                TC_LOG_ERROR("server.loading", "SQL and DBC format strings are not matching for table: '%s'", sql->sqlTableName.c_str());
                                 return false;
                             }
-                        }
 
-                        if (sqlColumnNumber != (result->GetFieldCount() - 1))
-                        {
-                            TC_LOG_ERROR("server.loading", "SQL and DBC format strings are not matching for table: '%s'", sql->sqlTableName.c_str());
-                            return false;
-                        }
-
-                        fields = NULL;
-                        ++rowIndex;
-                    } while (result->NextRow());
-                }
+                            fields = NULL;
+                            ++rowIndex;
+                        } while (result->NextRow());
+                    }
+			    }
             }
 
             // error in dbc file at loading if NULL
